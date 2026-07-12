@@ -2,58 +2,150 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>Doggo Runner</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      touch-action: none;
+      overscroll-behavior: none;
+    }
     body {
       background: #f7f7f7;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
       font-family: 'Press Start 2P', monospace;
       overflow: hidden;
     }
     #game-container {
       position: relative;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+      width: 100%;
+      height: 100%;
+      max-height: 100dvh;
     }
     canvas {
       display: block;
+      width: 100%;
+      height: 100%;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
       cursor: pointer;
       background: #f7f7f7;
+      touch-action: none;
     }
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div id="game-container">
-    <canvas id="game" width="1200" height="450"></canvas>
+    <canvas id="game"></canvas>
   </div>
 
   <script>
 (function() {
   'use strict';
 
-  // ─── Constants ───────────────────────────────────────────────
+  // ─── Layout (responsive) ─────────────────────────────────────
+  const DESIGN_W = 800;
+  const DESIGN_H = 300;
+  const DESIGN_GROUND = 248;
+  const DESIGN_DOG_X = 80;
+  const JUMP_CUT = 0.48;
+
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  const SCALE = 1.5;
-  const W = canvas.width;
-  const H = canvas.height;
-  const GROUND_Y = Math.round(248 * SCALE);
-  const DOG_X = Math.round(80 * SCALE);
-  const GRAVITY = 0.55 * SCALE;
-  const JUMP_FORCE = -9.5 * SCALE;
-  const JUMP_HOLD_GRAVITY = GRAVITY * 0.35;
-  const JUMP_CUT = 0.48;
-  const PIXEL = 3;
+
+  let W = 1200, H = 450, SCALE = 1.5, GROUND_Y = 372, DOG_X = 120;
+  let GRAVITY = 0.825, JUMP_FORCE = -14.25, JUMP_HOLD_GRAVITY = 0.29, PIXEL = 3;
+  let POOP_TYPES = {};
+  let dpr = 1;
 
   function S(n) { return n * SCALE; }
+  function isPortrait() { return H > W; }
+
+  function rebuildPoopTypes() {
+    POOP_TYPES = {
+      small:  { w: S(16), h: S(14) },
+      medium: { w: S(24), h: S(20) },
+      large:  { w: S(36), h: S(28) },
+      double: { w: S(44), h: S(18) },
+      swirl:  { w: S(22), h: S(32) }
+    };
+  }
+
+  function updateLayout() {
+    const vv = window.visualViewport;
+    const vw = Math.floor(vv ? vv.width : window.innerWidth);
+    const vh = Math.floor(vv ? vv.height : window.innerHeight);
+
+    if (vh > vw) {
+      W = vw;
+      H = vh;
+    } else {
+      W = Math.min(vw, 1200);
+      H = Math.floor(W * (DESIGN_H / DESIGN_W));
+      if (H > vh) {
+        H = vh;
+        W = Math.floor(H * (DESIGN_W / DESIGN_H));
+      }
+    }
+
+    SCALE = (W / DESIGN_W) * 1.5;
+    GROUND_Y = isPortrait() ? Math.floor(H - S(52)) : Math.round(DESIGN_GROUND * SCALE);
+    DOG_X = Math.round(DESIGN_DOG_X * SCALE);
+    GRAVITY = 0.55 * SCALE;
+    JUMP_FORCE = -9.5 * SCALE;
+    JUMP_HOLD_GRAVITY = GRAVITY * 0.35;
+    PIXEL = Math.max(2, Math.round(2 * SCALE));
+    rebuildPoopTypes();
+
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    if (dog.onGround) {
+      dog.y = GROUND_Y;
+      dog.x = DOG_X;
+    }
+  }
+
+  function getSelectLayout() {
+    if (isPortrait()) {
+      const gap = S(12);
+      const pad = S(16);
+      const cardW = (W - pad * 2 - gap) / 2;
+      const cardH = S(128);
+      return { portrait: true, cardW, cardH, gap, pad, startY: S(68) };
+    }
+    const cardW = S(140), cardH = S(175), gap = S(20);
+    const startX = (W - (cardW * 4 + gap * 3)) / 2;
+    return { portrait: false, cardW, cardH, gap, startX, startY: S(95) };
+  }
+
+  function getSelectCardPos(i, layout) {
+    if (layout.portrait) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      return {
+        cx: layout.pad + col * (layout.cardW + layout.gap),
+        cy: layout.startY + row * (layout.cardH + layout.gap)
+      };
+    }
+    return {
+      cx: layout.startX + i * (layout.cardW + layout.gap),
+      cy: layout.startY
+    };
+  }
 
   const STATE = {
     TITLE: 'title',
@@ -102,14 +194,6 @@
     { length: 8500, baseSpeed: 3, maxSpeed: 5.5, obstacleGap: [210, 350], boneChance: 0.55, pbChance: 0.1 },
     { length: 12000, baseSpeed: 3.5, maxSpeed: 6.5, obstacleGap: [170, 290], boneChance: 0.5, pbChance: 0.12 }
   ];
-
-  const POOP_TYPES = {
-    small:  { w: S(16), h: S(14) },
-    medium: { w: S(24), h: S(20) },
-    large:  { w: S(36), h: S(28) },
-    double: { w: S(44), h: S(18) },
-    swirl:  { w: S(22), h: S(32) }
-  };
 
   const COLORS = {
     sky: '#f7f7f7',
@@ -206,6 +290,16 @@
     e.preventDefault();
     if (state === STATE.PLAYING) endJump();
   }, { passive: false });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    if (state === STATE.PLAYING) e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener('resize', updateLayout);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateLayout);
+  }
+  window.addEventListener('orientationchange', () => setTimeout(updateLayout, 150));
 
   function handleAction() {
     switch (state) {
@@ -231,10 +325,10 @@
       return;
     }
     if (state === STATE.CHARACTER_SELECT) {
-      const cardW = S(140), gap = S(20), startX = (W - (cardW * 4 + gap * 3)) / 2;
+      const layout = getSelectLayout();
       for (let i = 0; i < 4; i++) {
-        const cx = startX + i * (cardW + gap);
-        if (x >= cx && x <= cx + cardW && y >= S(100) && y <= S(260)) {
+        const { cx, cy } = getSelectCardPos(i, layout);
+        if (x >= cx && x <= cx + layout.cardW && y >= cy && y <= cy + layout.cardH) {
           selectIndex = i;
           startLevel(0, true);
           return;
@@ -963,10 +1057,11 @@
     drawText('RUNNER', W / 2, S(120), 36, COLORS.textDark);
 
     if (titleBlink) {
-      drawText('PRESS SPACE TO START', W / 2, S(200), 10, COLORS.text);
+      const startMsg = isPortrait() ? 'TAP TO START' : 'PRESS SPACE TO START';
+      drawText(startMsg, W / 2, isPortrait() ? H * 0.45 : S(200), 10, COLORS.text);
     }
 
-    drawText(`HIGH SCORE: ${highScore}`, W / 2, S(270), 8, COLORS.groundLight);
+    drawText(`HIGH SCORE: ${highScore}`, W / 2, isPortrait() ? H - S(40) : S(270), 8, COLORS.groundLight);
   }
 
   function renderCharacterSelect() {
@@ -974,41 +1069,45 @@
     drawSun();
     drawGround(0);
 
-    drawText('CHOOSE YOUR DOGGO', W / 2, S(40), 12, COLORS.textDark);
+    drawText('CHOOSE YOUR DOGGO', W / 2, S(36), isPortrait() ? 10 : 12, COLORS.textDark);
 
-    const cardW = S(140), cardH = S(175), gap = S(20);
-    const startX = (W - (cardW * 4 + gap * 3)) / 2;
+    const layout = getSelectLayout();
 
     for (let i = 0; i < 4; i++) {
-      const cx = startX + i * (cardW + gap);
-      const cy = S(95);
+      const { cx, cy } = getSelectCardPos(i, layout);
       const selected = i === selectIndex;
 
       if (selected) {
         ctx.strokeStyle = COLORS.textDark;
         ctx.lineWidth = 3;
-        ctx.strokeRect(cx - S(4), cy - S(4), cardW + S(8), cardH + S(8));
+        ctx.strokeRect(cx - S(4), cy - S(4), layout.cardW + S(8), layout.cardH + S(8));
         ctx.fillStyle = 'rgba(83,83,83,0.08)';
-        ctx.fillRect(cx, cy, cardW, cardH);
+        ctx.fillRect(cx, cy, layout.cardW, layout.cardH);
       } else {
         ctx.strokeStyle = COLORS.groundLight;
         ctx.lineWidth = 1;
-        ctx.strokeRect(cx, cy, cardW, cardH);
+        ctx.strokeRect(cx, cy, layout.cardW, layout.cardH);
       }
 
-      drawDog(cx + cardW / 2 - S(16), cy + S(82), i, Math.floor(Date.now() / 120) % 3, false, false);
+      const dogY = cy + layout.cardH * 0.48;
+      drawDog(cx + layout.cardW / 2 - S(16), dogY, i, Math.floor(Date.now() / 120) % 3, false, false);
 
       const dogData = DOGS[i];
       const name = dogData.name;
-      const fontSize = name.length > 12 ? 7 : 8;
-      drawText(name, cx + cardW / 2, cy + S(118), fontSize, selected ? COLORS.textDark : COLORS.text);
-      drawText(dogData.skill, cx + cardW / 2, cy + S(136), 5, dogData.colors.accent);
-      if (selected) {
-        drawText(dogData.skillDesc, cx + cardW / 2, cy + S(154), 4.5, COLORS.groundLight);
+      const fontSize = layout.portrait ? (name.length > 12 ? 5.5 : 6) : (name.length > 12 ? 7 : 8);
+      drawText(name, cx + layout.cardW / 2, cy + layout.cardH * 0.72, fontSize, selected ? COLORS.textDark : COLORS.text);
+      drawText(dogData.skill, cx + layout.cardW / 2, cy + layout.cardH * 0.84, layout.portrait ? 4 : 5, dogData.colors.accent);
+      if (selected && !layout.portrait) {
+        drawText(dogData.skillDesc, cx + layout.cardW / 2, cy + S(154), 4.5, COLORS.groundLight);
       }
     }
 
-    drawText('← → TO SELECT   SPACE TO START', W / 2, S(285), 7, COLORS.groundLight);
+    if (layout.portrait && selectIndex >= 0) {
+      drawText(DOGS[selectIndex].skillDesc, W / 2, H - S(52), 5, COLORS.groundLight);
+      drawText('TAP A DOG TO START', W / 2, H - S(28), 6, COLORS.text);
+    } else {
+      drawText('← → TO SELECT   SPACE TO START', W / 2, S(285), 7, COLORS.groundLight);
+    }
   }
 
   function renderGameplay() {
@@ -1150,6 +1249,7 @@
     requestAnimationFrame(gameLoop);
   }
 
+  updateLayout();
   requestAnimationFrame(gameLoop);
 })();
   </script>
