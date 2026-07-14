@@ -114,9 +114,9 @@
       }
     }
 
-    // Scale from canvas height — at DESIGN_H=300 this gives SCALE=1.5 (the original reference)
-    SCALE = (H / DESIGN_H) * 1.5;
-    SCALE = Math.max(SCALE, 1.0);
+    // Scale from canvas height — at DESIGN_H=300 and H=450 this gives SCALE=1.5 (the original)
+    SCALE = H / DESIGN_H;
+    SCALE = Math.max(SCALE, 0.8);
     GROUND_Y = isPortrait()
       ? Math.floor(H - S(52))
       : Math.floor(H * (DESIGN_GROUND / DESIGN_H));
