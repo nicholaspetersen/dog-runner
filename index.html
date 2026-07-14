@@ -136,9 +136,18 @@
       const cardH = S(128);
       return { portrait: true, cardW, cardH, gap, pad, startY: S(68) };
     }
-    const cardW = S(140), cardH = S(175), gap = S(20);
-    const startX = (W - (cardW * 4 + gap * 3)) / 2;
-    return { portrait: false, cardW, cardH, gap, startX, startY: S(95) };
+
+    const gap = W * 0.015;
+    const padX = W * 0.03;
+    const topY = H * 0.12;
+    const bottomReserve = H * 0.14;
+    const availableH = H - topY - bottomReserve;
+    const cardH = availableH * 0.82;
+    const cardW = Math.min(cardH * 0.8, (W - padX * 2 - gap * 3) / 4);
+    const totalW = cardW * 4 + gap * 3;
+    const startX = (W - totalW) / 2;
+    const startY = topY + (availableH - cardH) * 0.35;
+    return { portrait: false, cardW, cardH, gap, startX, startY };
   }
 
   function getSelectCardPos(i, layout) {
@@ -1076,9 +1085,8 @@
   function renderCharacterSelect() {
     drawClouds();
     drawSun();
-    drawGround(0);
 
-    drawText('CHOOSE YOUR DOGGO', W / 2, S(36), isPortrait() ? 10 : 12, COLORS.textDark);
+    drawText('CHOOSE YOUR DOGGO', W / 2, H * 0.06, isPortrait() ? 10 : 12, COLORS.textDark);
 
     const layout = getSelectLayout();
 
@@ -1089,7 +1097,7 @@
       if (selected) {
         ctx.strokeStyle = COLORS.textDark;
         ctx.lineWidth = 3;
-        ctx.strokeRect(cx - S(4), cy - S(4), layout.cardW + S(8), layout.cardH + S(8));
+        ctx.strokeRect(cx - 3, cy - 3, layout.cardW + 6, layout.cardH + 6);
         ctx.fillStyle = 'rgba(83,83,83,0.08)';
         ctx.fillRect(cx, cy, layout.cardW, layout.cardH);
       } else {
@@ -1098,24 +1106,24 @@
         ctx.strokeRect(cx, cy, layout.cardW, layout.cardH);
       }
 
-      const dogY = cy + layout.cardH * 0.48;
+      const dogY = cy + layout.cardH * 0.55;
       drawDog(cx + layout.cardW / 2 - S(16), dogY, i, Math.floor(Date.now() / 120) % 3, false, false);
 
       const dogData = DOGS[i];
       const name = dogData.name;
-      const fontSize = layout.portrait ? (name.length > 12 ? 5.5 : 6) : (name.length > 12 ? 7 : 8);
-      drawText(name, cx + layout.cardW / 2, cy + layout.cardH * 0.72, fontSize, selected ? COLORS.textDark : COLORS.text);
-      drawText(dogData.skill, cx + layout.cardW / 2, cy + layout.cardH * 0.84, layout.portrait ? 4 : 5, dogData.colors.accent);
-      if (selected && !layout.portrait) {
-        drawText(dogData.skillDesc, cx + layout.cardW / 2, cy + S(154), 4.5, COLORS.groundLight);
-      }
+      const fontSize = layout.portrait
+        ? (name.length > 12 ? 5.5 : 6)
+        : Math.max(5, Math.min(8, layout.cardW / (name.length > 10 ? 22 : 18)));
+      drawText(name, cx + layout.cardW / 2, cy + layout.cardH * 0.78, fontSize, selected ? COLORS.textDark : COLORS.text);
+      drawText(dogData.skill, cx + layout.cardW / 2, cy + layout.cardH * 0.9, layout.portrait ? 4 : 5, dogData.colors.accent);
     }
 
-    if (layout.portrait && selectIndex >= 0) {
+    if (layout.portrait) {
       drawText(DOGS[selectIndex].skillDesc, W / 2, H - S(52), 5, COLORS.groundLight);
       drawText('TAP A DOG TO START', W / 2, H - S(28), 6, COLORS.text);
     } else {
-      drawText('← → TO SELECT   SPACE TO START', W / 2, S(285), 7, COLORS.groundLight);
+      drawText(DOGS[selectIndex].skillDesc, W / 2, layout.startY + layout.cardH + H * 0.04, 5, COLORS.groundLight);
+      drawText('← → TO SELECT   SPACE TO START', W / 2, H - H * 0.05, 7, COLORS.groundLight);
     }
   }
 
