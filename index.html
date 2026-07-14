@@ -66,6 +66,7 @@
 
   let W = 1200, H = 450, SCALE = 1.5, GROUND_Y = 372, DOG_X = 120;
   let GRAVITY = 0.825, JUMP_FORCE = -14.25, JUMP_HOLD_GRAVITY = 0.29, PIXEL = 3;
+  let POOP_PIXEL = 3; // separate pixel unit for poop sprites — scales with dog proportionally
   let POOP_TYPES = {};
   let dpr = 1;
   const isTouchDevice = 'ontouchstart' in window;
@@ -82,12 +83,13 @@
   const MAX_LANDSCAPE_W = 1200;
 
   function rebuildPoopTypes() {
+    const PP = POOP_PIXEL;
     POOP_TYPES = {
-      small:  { w: S(16), h: S(14) },
-      medium: { w: S(24), h: S(20) },
-      large:  { w: S(36), h: S(28) },
-      double: { w: S(44), h: S(18) },
-      swirl:  { w: S(22), h: S(32) }
+      small:  { w: 8*PP,  h: 8*PP  },
+      medium: { w: 10*PP, h: 10*PP },
+      large:  { w: 13*PP, h: 12*PP },
+      double: { w: 22*PP, h: 10*PP },
+      swirl:  { w: 11*PP, h: 15*PP }
     };
   }
 
@@ -123,6 +125,9 @@
     JUMP_FORCE = -9.5 * SCALE;
     JUMP_HOLD_GRAVITY = GRAVITY * 0.35;
     PIXEL = Math.max(2, Math.round(2 * SCALE));
+    // Poop sprites use a larger pixel unit so they stay proportional to the dog
+    // (dog unit = S(2.5), poop unit = S(3) → small poop ≈ 55% of dog height)
+    POOP_PIXEL = Math.max(3, Math.round(S(3)));
     rebuildPoopTypes();
 
     dpr = (isTouchDevice || W < 768) ? 1 : Math.min(window.devicePixelRatio || 1, 2);
@@ -858,7 +863,7 @@
 
   // ─── Entity Drawing ──────────────────────────────────────────
   function poopPixel(bx, by, dx, dy, color) {
-    drawPixel(bx + dx * PIXEL, by - dy * PIXEL, color, PIXEL);
+    drawPixel(bx + dx * POOP_PIXEL, by - dy * POOP_PIXEL, color, POOP_PIXEL);
   }
 
   function drawPoopCoil(bx, by, size) {
@@ -985,10 +990,11 @@
   function drawPoopFlies(bx, by, w) {
     const tick = Math.floor(Date.now() / 300);
     const flyOffsets = [[w + 2, 14], [w - 4, 20], [w + 6, 8]];
+    const PP = POOP_PIXEL;
     flyOffsets.forEach(([fx, fy], i) => {
       const bob = ((tick + i) % 3) - 1;
-      drawPixel(bx + fx * PIXEL, by - fy * PIXEL + bob, '#535353', 2);
-      drawPixel(bx + (fx + 2) * PIXEL, by - fy * PIXEL + bob, 'rgba(180,180,180,0.6)', 1);
+      drawPixel(bx + fx * PP, by - fy * PP + bob, '#535353', Math.max(2, PP - 1));
+      drawPixel(bx + (fx + 2) * PP, by - fy * PP + bob, 'rgba(180,180,180,0.6)', Math.max(1, PP - 2));
     });
   }
 
@@ -997,13 +1003,13 @@
     const by = groundY;
 
     if (type === 'double') {
-      drawPoopCoil(bx + S(2), by, 'small');
-      drawPoopCoil(bx + S(14), by, 'medium');
+      drawPoopCoil(bx, by, 'small');
+      drawPoopCoil(bx + 9 * POOP_PIXEL, by, 'medium');
       drawPoopFlies(bx, by, 20);
     } else {
       const sizeMap = { small: 'small', medium: 'medium', large: 'large', swirl: 'swirl' };
       drawPoopCoil(bx, by, sizeMap[type]);
-      if (type !== 'small') drawPoopFlies(bx, by, POOP_TYPES[type].w / PIXEL);
+      if (type !== 'small') drawPoopFlies(bx, by, POOP_TYPES[type].w / POOP_PIXEL);
     }
   }
 
