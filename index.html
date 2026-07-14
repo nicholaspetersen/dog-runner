@@ -99,7 +99,7 @@
       W = vw;
       H = vh;
     } else {
-      // Landscape / desktop: scale up to fill viewport, keep aspect ratio
+      // Landscape / desktop: fill viewport; avoid a thin strip on tablets
       const viewAspect = vw / vh;
       if (viewAspect > aspect) {
         H = vh;
@@ -107,6 +107,10 @@
       } else {
         W = vw;
         H = Math.floor(W / aspect);
+        if (H < vh * 0.75) {
+          H = vh;
+          W = vw;
+        }
       }
     }
 
@@ -362,8 +366,8 @@
     }
     if (state === STATE.PLAYING) return;
     if (state === STATE.DEAD) {
-      if (y > S(200) && x < W / 2) restartLevel();
-      else if (y > S(200)) goToCharacterSelect();
+      if (y > H * 0.55 && x < W / 2) restartLevel();
+      else if (y > H * 0.55) goToCharacterSelect();
       return;
     }
     if (state === STATE.LEVEL_COMPLETE || state === STATE.WIN) {
@@ -1211,12 +1215,12 @@
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(0, 0, W, H);
 
-    drawText('YOU GOT', W / 2, S(90), 16, '#fff');
-    drawText('POOPED ON!', W / 2, S(120), 16, '#fff');
-    drawText(`SCORE: ${score}`, W / 2, S(165), 10, '#fff');
+    drawText('YOU GOT', W / 2, H * 0.28, 16, '#fff');
+    drawText('POOPED ON!', W / 2, H * 0.36, 16, '#fff');
+    drawText(`SCORE: ${score}`, W / 2, H * 0.46, 10, '#fff');
 
-    drawButton(W / 4, S(220), 'RESTART', 'R');
-    drawButton(W * 3 / 4, S(220), 'CHAR SELECT', 'B');
+    drawButton(W / 4, H * 0.62, 'RESTART', isTouchDevice ? 'TAP' : 'R');
+    drawButton(W * 3 / 4, H * 0.62, 'CHAR SELECT', isTouchDevice ? 'TAP' : 'B');
   }
 
   function renderLevelComplete() {
