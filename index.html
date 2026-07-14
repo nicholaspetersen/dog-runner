@@ -78,13 +78,8 @@
   function S(n) { return n * SCALE; }
   function isPortrait() { return H > W; }
 
-  function computeScale(canvasW, canvasH) {
-    const dogHeightUnits = 16 * 1.05 * 3;
-    const dogWidthUnits = 14 * 1.05 * 3;
-    const scaleFromHeight = (canvasH * 0.22) / dogHeightUnits;
-    const scaleFromWidth = (canvasW * 0.38) / dogWidthUnits;
-    return Math.min(scaleFromHeight, scaleFromWidth);
-  }
+  // Max canvas height on landscape — keeps sky from feeling enormous on big monitors
+  const MAX_LANDSCAPE_H = 600;
 
   function rebuildPoopTypes() {
     POOP_TYPES = {
@@ -102,17 +97,20 @@
     const vh = Math.floor(vv ? vv.height : window.innerHeight);
 
     if (vh > vw) {
-      // Portrait: full screen
+      // Portrait: full screen, scale by height
       W = vw;
       H = vh;
     } else {
-      // Landscape: preserve design aspect ratio so sprites stay proportional
-      const fitScale = Math.min(vw / DESIGN_W, vh / DESIGN_H);
-      W = Math.floor(DESIGN_W * fitScale);
-      H = Math.floor(DESIGN_H * fitScale);
+      // Landscape: fill full width, cap height so sky doesn't dwarf action on big monitors
+      W = vw;
+      H = Math.min(vh, MAX_LANDSCAPE_H);
     }
 
-    SCALE = computeScale(W, H);
+    // Scale derived purely from canvas height so all sprites stay proportional
+    // at DESIGN_H=300 this gives SCALE=1.5 (the original reference value)
+    SCALE = (H / DESIGN_H) * 1.5;
+    // Floor: never let sprites shrink below a minimum playable size
+    SCALE = Math.max(SCALE, 1.0);
     GROUND_Y = isPortrait()
       ? Math.floor(H - S(52))
       : Math.floor(H * (DESIGN_GROUND / DESIGN_H));
@@ -138,11 +136,14 @@
 
   function getSelectLayout() {
     if (isPortrait()) {
-      const gap = S(12);
-      const pad = S(16);
+      const headerH = H * 0.13;
+      const footerH = H * 0.12;
+      const gap = W * 0.03;
+      const pad = W * 0.04;
       const cardW = (W - pad * 2 - gap) / 2;
-      const cardH = S(128);
-      return { portrait: true, cardW, cardH, gap, pad, startY: S(68) };
+      const availableH = H - headerH - footerH;
+      const cardH = (availableH - gap) / 2;
+      return { portrait: true, cardW, cardH, gap, pad, startY: headerH };
     }
 
     const gap = W * 0.015;
@@ -660,8 +661,9 @@
     ctx.fillRect(Math.floor(x), Math.floor(y), size || PIXEL, size || PIXEL);
   }
 
+  // size is in design units (multiplied by SCALE); pass negative size for raw px
   function drawText(text, x, y, size, color, align) {
-    ctx.font = `${Math.round(S(size))}px 'Press Start 2P', monospace`;
+    ctx.font = `${Math.round(size < 0 ? -size : S(size))}px 'Press Start 2P', monospace`;
     ctx.fillStyle = color || COLORS.text;
     ctx.textAlign = align || 'center';
     ctx.fillText(text, x, y);
@@ -712,7 +714,7 @@
   }
 
   function dogPixelSize(d) {
-    return d.scale * S(3);
+    return d.scale * S(2.5);
   }
 
   function dogDrawWidth(d) {
@@ -1084,17 +1086,25 @@
     drawClouds();
     drawSun();
     drawGround(0);
-    drawDog(W / 2 - dogDrawWidth(DOGS[1]) / 2, GROUND_Y, 1, Math.floor(Date.now() / 150) % 3, false, false);
 
-    drawText('DOGGO', W / 2, S(80), 36, COLORS.textDark);
-    drawText('RUNNER', W / 2, S(120), 36, COLORS.textDark);
+    // Title text: raw pixel size so large SCALE on portrait phones doesn't blow it up
+    const titlePx = -Math.min(Math.floor(W / 6), Math.floor(H / 12), 80);
+    const titleY1 = isPortrait() ? H * 0.22 : H * 0.28;
+    const titleY2 = isPortrait() ? H * 0.36 : H * 0.48;
+    drawText('DOGGO', W / 2, titleY1, titlePx, COLORS.textDark);
+    drawText('RUNNER', W / 2, titleY2, titlePx, COLORS.textDark);
+
+    // Small dog runs on the ground line
+    drawDog(W / 2 - dogDrawWidth(DOGS[1]) / 2, GROUND_Y, 1, Math.floor(Date.now() / 150) % 3, false, false);
 
     if (titleBlink) {
       const startMsg = isPortrait() ? 'TAP TO START' : 'PRESS SPACE TO START';
-      drawText(startMsg, W / 2, isPortrait() ? H * 0.45 : S(200), 10, COLORS.text);
+      const startPx = -Math.min(Math.floor(W / 18), 28);
+      drawText(startMsg, W / 2, isPortrait() ? H * 0.58 : H * 0.72, startPx, COLORS.text);
     }
 
-    drawText(`HIGH SCORE: ${highScore}`, W / 2, isPortrait() ? H - S(40) : S(270), 8, COLORS.groundLight);
+    const hiPx = -Math.min(Math.floor(W / 22), 22);
+    drawText(`HIGH SCORE: ${highScore}`, W / 2, isPortrait() ? H * 0.93 : H * 0.88, hiPx, COLORS.groundLight);
   }
 
   function renderCharacterSelect() {
@@ -1147,8 +1157,8 @@
     }
 
     if (layout.portrait) {
-      drawText(DOGS[selectIndex].skillDesc, W / 2, H - S(52), 5, COLORS.groundLight);
-      drawText('TAP A DOG TO START', W / 2, H - S(28), 6, COLORS.text);
+      drawText(DOGS[selectIndex].skillDesc, W / 2, H - H * 0.07, 5, COLORS.groundLight);
+      drawText('TAP A DOG TO START', W / 2, H - H * 0.03, 6, COLORS.text);
     } else {
       drawText(DOGS[selectIndex].skillDesc, W / 2, layout.startY + layout.cardH + H * 0.04, 5, COLORS.groundLight);
       drawText('← → TO SELECT   SPACE TO START', W / 2, H - H * 0.05, 7, COLORS.groundLight);
