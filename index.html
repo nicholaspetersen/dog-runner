@@ -78,8 +78,8 @@
   function S(n) { return n * SCALE; }
   function isPortrait() { return H > W; }
 
-  // Max canvas height on landscape — keeps sky from feeling enormous on big monitors
-  const MAX_LANDSCAPE_H = 600;
+  // Chrome Dino-style: fixed max canvas size, centered in viewport
+  const MAX_LANDSCAPE_W = 1200;
 
   function rebuildPoopTypes() {
     POOP_TYPES = {
@@ -97,19 +97,23 @@
     const vh = Math.floor(vv ? vv.height : window.innerHeight);
 
     if (vh > vw) {
-      // Portrait: full screen, scale by height
+      // Portrait: full screen
       W = vw;
       H = vh;
     } else {
-      // Landscape: fill full width, cap height so sky doesn't dwarf action on big monitors
-      W = vw;
-      H = Math.min(vh, MAX_LANDSCAPE_H);
+      // Landscape: preserve 800:300 aspect ratio, cap at MAX_LANDSCAPE_W
+      // (Chrome Dino-style — centered fixed canvas, not full-width)
+      W = Math.min(vw, MAX_LANDSCAPE_W);
+      H = Math.floor(W * DESIGN_H / DESIGN_W);
+      // If viewport is too short, shrink to fit height
+      if (H > vh * 0.92) {
+        H = Math.floor(vh * 0.92);
+        W = Math.floor(H * DESIGN_W / DESIGN_H);
+      }
     }
 
-    // Scale derived purely from canvas height so all sprites stay proportional
-    // at DESIGN_H=300 this gives SCALE=1.5 (the original reference value)
+    // Scale from canvas height — at DESIGN_H=300 this gives SCALE=1.5 (the original reference)
     SCALE = (H / DESIGN_H) * 1.5;
-    // Floor: never let sprites shrink below a minimum playable size
     SCALE = Math.max(SCALE, 1.0);
     GROUND_Y = isPortrait()
       ? Math.floor(H - S(52))
