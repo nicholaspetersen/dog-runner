@@ -26,19 +26,21 @@
     }
     #game-container {
       position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       width: 100%;
       height: 100%;
       max-height: 100dvh;
     }
     canvas {
       display: block;
-      width: 100%;
-      height: 100%;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
       cursor: pointer;
       background: #f7f7f7;
       touch-action: none;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
     }
     .hidden { display: none !important; }
   </style>
@@ -84,22 +86,29 @@
     const vv = window.visualViewport;
     const vw = Math.floor(vv ? vv.width : window.innerWidth);
     const vh = Math.floor(vv ? vv.height : window.innerHeight);
+    const aspect = DESIGN_W / DESIGN_H;
 
     if (vh > vw) {
+      // Portrait: use full screen
       W = vw;
       H = vh;
     } else {
-      W = Math.min(vw, 1200);
-      H = Math.floor(W * (DESIGN_H / DESIGN_W));
-      if (H > vh) {
+      // Landscape / desktop: scale up to fill viewport, keep aspect ratio
+      const viewAspect = vw / vh;
+      if (viewAspect > aspect) {
         H = vh;
-        W = Math.floor(H * (DESIGN_W / DESIGN_H));
+        W = Math.floor(H * aspect);
+      } else {
+        W = vw;
+        H = Math.floor(W / aspect);
       }
     }
 
     SCALE = (W / DESIGN_W) * 1.5;
-    GROUND_Y = isPortrait() ? Math.floor(H - S(52)) : Math.round(DESIGN_GROUND * SCALE);
-    DOG_X = Math.round(DESIGN_DOG_X * SCALE);
+    GROUND_Y = isPortrait()
+      ? Math.floor(H - S(52))
+      : Math.floor(H * (DESIGN_GROUND / DESIGN_H));
+    DOG_X = Math.round((DESIGN_DOG_X / DESIGN_W) * W);
     GRAVITY = 0.55 * SCALE;
     JUMP_FORCE = -9.5 * SCALE;
     JUMP_HOLD_GRAVITY = GRAVITY * 0.35;
