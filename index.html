@@ -78,6 +78,14 @@
   function S(n) { return n * SCALE; }
   function isPortrait() { return H > W; }
 
+  function computeScale(canvasW, canvasH) {
+    const dogHeightUnits = 16 * 1.05 * 3;
+    const dogWidthUnits = 14 * 1.05 * 3;
+    const scaleFromHeight = (canvasH * 0.22) / dogHeightUnits;
+    const scaleFromWidth = (canvasW * 0.38) / dogWidthUnits;
+    return Math.min(scaleFromHeight, scaleFromWidth);
+  }
+
   function rebuildPoopTypes() {
     POOP_TYPES = {
       small:  { w: S(16), h: S(14) },
@@ -92,29 +100,19 @@
     const vv = window.visualViewport;
     const vw = Math.floor(vv ? vv.width : window.innerWidth);
     const vh = Math.floor(vv ? vv.height : window.innerHeight);
-    const aspect = DESIGN_W / DESIGN_H;
 
     if (vh > vw) {
-      // Portrait: use full screen
+      // Portrait: full screen
       W = vw;
       H = vh;
     } else {
-      // Landscape / desktop: fill viewport; avoid a thin strip on tablets
-      const viewAspect = vw / vh;
-      if (viewAspect > aspect) {
-        H = vh;
-        W = Math.floor(H * aspect);
-      } else {
-        W = vw;
-        H = Math.floor(W / aspect);
-        if (H < vh * 0.75) {
-          H = vh;
-          W = vw;
-        }
-      }
+      // Landscape: preserve design aspect ratio so sprites stay proportional
+      const fitScale = Math.min(vw / DESIGN_W, vh / DESIGN_H);
+      W = Math.floor(DESIGN_W * fitScale);
+      H = Math.floor(DESIGN_H * fitScale);
     }
 
-    SCALE = (W / DESIGN_W) * 1.5;
+    SCALE = computeScale(W, H);
     GROUND_Y = isPortrait()
       ? Math.floor(H - S(52))
       : Math.floor(H * (DESIGN_GROUND / DESIGN_H));
@@ -714,7 +712,7 @@
   }
 
   function dogPixelSize(d) {
-    return d.scale * S(2.5);
+    return d.scale * S(3);
   }
 
   function dogDrawWidth(d) {
@@ -993,8 +991,8 @@
     const by = groundY;
 
     if (type === 'double') {
-      drawPoopCoil(bx + 2, by, 'small');
-      drawPoopCoil(bx + 14, by, 'medium');
+      drawPoopCoil(bx + S(2), by, 'small');
+      drawPoopCoil(bx + S(14), by, 'medium');
       drawPoopFlies(bx, by, 20);
     } else {
       const sizeMap = { small: 'small', medium: 'medium', large: 'large', swirl: 'swirl' };
@@ -1124,9 +1122,22 @@
       }
 
       const dogY = cy + layout.cardH * 0.55;
-      drawDog(cx + layout.cardW / 2 - dogDrawWidth(DOGS[i]) / 2, dogY, i, Math.floor(Date.now() / 120) % 3, false, false);
-
+      const maxDogH = layout.cardH * 0.42;
       const dogData = DOGS[i];
+      const naturalDogH = 18 * dogPixelSize(dogData);
+      const selectScale = naturalDogH > maxDogH ? maxDogH / naturalDogH : 1;
+      const centerX = cx + layout.cardW / 2;
+
+      ctx.save();
+      if (selectScale < 1) {
+        ctx.translate(centerX, dogY);
+        ctx.scale(selectScale, selectScale);
+        drawDog(-dogDrawWidth(dogData) / 2, 0, i, Math.floor(Date.now() / 120) % 3, false, false);
+      } else {
+        drawDog(centerX - dogDrawWidth(dogData) / 2, dogY, i, Math.floor(Date.now() / 120) % 3, false, false);
+      }
+      ctx.restore();
+
       const name = dogData.name;
       const fontSize = layout.portrait
         ? (name.length > 12 ? 5.5 : 6)
