@@ -646,10 +646,10 @@
 
   function getDogHitbox() {
     const dogData = DOGS[selectedDog];
-    const s = dogData.scale;
-    const w = 28 * s;
-    const h = 24 * s;
-    return { x: dog.x + S(4), y: dog.y - h + S(4), w: w - S(8), h: h - S(4) };
+    const u = dogPixelSize(dogData);
+    const w = 14 * u;
+    const h = 12 * u;
+    return { x: dog.x + u, y: dog.y - h + u * 0.5, w: w - u, h: h - u * 0.5 };
   }
 
   function rectsOverlap(a, b) {
@@ -713,11 +713,17 @@
     ctx.fillRect(x + S(4), y + S(2), w - S(8), S(10));
   }
 
+  function dogPixelSize(d) {
+    return d.scale * S(2.5);
+  }
+
+  function dogDrawWidth(d) {
+    return 14 * dogPixelSize(d);
+  }
+
   // ─── Dog Sprites (pixel art) ─────────────────────────────────
   function drawDog(x, y, dogIndex, frame, jumping, zoomiesActive) {
     const d = DOGS[dogIndex];
-    const c = d.colors;
-    const s = d.scale * PIXEL;
     const baseY = y;
     const baseX = x;
 
@@ -726,7 +732,7 @@
       ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 50) * 0.1;
       for (let i = 1; i <= 3; i++) {
         ctx.globalAlpha = 0.15;
-        drawDogBody(baseX - i * 6, baseY, d, frame, jumping, false);
+        drawDogBody(baseX - i * S(6), baseY, d, frame, jumping, false);
       }
       ctx.globalAlpha = 1;
     }
@@ -737,7 +743,7 @@
 
   function drawDogBody(baseX, baseY, d, frame, jumping, zoomiesActive) {
     const c = d.colors;
-    const s = d.scale * PIXEL;
+    const s = dogPixelSize(d);
     const id = d.id;
 
     if (id === 'chihuahua') drawChihuahua(baseX, baseY, c, s, frame, jumping);
@@ -747,98 +753,98 @@
 
     if (zoomiesActive) {
       ctx.fillStyle = COLORS.sparkle;
-      const sparkX = baseX + 10 * s / PIXEL;
-      const sparkY = baseY - 18 * s / PIXEL;
-      drawPixel(sparkX, sparkY, COLORS.sparkle, 2);
-      drawPixel(sparkX + 8, sparkY - 4, COLORS.sparkle, 2);
+      const sparkX = baseX + 10 * s;
+      const sparkY = baseY - 18 * s;
+      drawPixel(sparkX, sparkY, COLORS.sparkle, PIXEL);
+      drawPixel(sparkX + S(8), sparkY - S(4), COLORS.sparkle, PIXEL);
     }
   }
 
   function drawChihuahua(bx, by, c, s, frame, jumping) {
     const legOffset = jumping ? 0 : [0, 2, 0][frame];
     // Body (small)
-    fillRect(bx + 4*s/PIXEL, by - 10*s/PIXEL, 8*s/PIXEL, 6*s/PIXEL, c.body);
-    fillRect(bx + 2*s/PIXEL, by - 8*s/PIXEL, 4*s/PIXEL, 4*s/PIXEL, c.body);
+    fillRect(bx + 4*s, by - 10*s, 8*s, 6*s, c.body);
+    fillRect(bx + 2*s, by - 8*s, 4*s, 4*s, c.body);
     // Head
-    fillRect(bx + 10*s/PIXEL, by - 14*s/PIXEL, 6*s/PIXEL, 6*s/PIXEL, c.body);
-    fillRect(bx + 14*s/PIXEL, by - 12*s/PIXEL, 3*s/PIXEL, 3*s/PIXEL, c.light);
+    fillRect(bx + 10*s, by - 14*s, 6*s, 6*s, c.body);
+    fillRect(bx + 14*s, by - 12*s, 3*s, 3*s, c.light);
     // Ear
-    fillRect(bx + 10*s/PIXEL, by - 18*s/PIXEL, 3*s/PIXEL, 4*s/PIXEL, c.dark);
+    fillRect(bx + 10*s, by - 18*s, 3*s, 4*s, c.dark);
     // Eye
-    drawPixel(bx + 13*s/PIXEL, by - 11*s/PIXEL, c.textDark || '#292929', s);
+    drawPixel(bx + 13*s, by - 11*s, c.textDark || '#292929', PIXEL);
     // Legs
-    fillRect(bx + 4*s/PIXEL, by - 4*s/PIXEL + legOffset, 2*s/PIXEL, 4*s/PIXEL, c.dark);
-    fillRect(bx + 8*s/PIXEL, by - 4*s/PIXEL - legOffset, 2*s/PIXEL, 4*s/PIXEL, c.dark);
+    fillRect(bx + 4*s, by - 4*s + legOffset, 2*s, 4*s, c.dark);
+    fillRect(bx + 8*s, by - 4*s - legOffset, 2*s, 4*s, c.dark);
     // Tail
-    fillRect(bx, by - 12*s/PIXEL, 3*s/PIXEL, 2*s/PIXEL, c.body);
+    fillRect(bx, by - 12*s, 3*s, 2*s, c.body);
   }
 
   function drawGolden(bx, by, c, s, frame, jumping) {
     const legOffset = jumping ? 0 : [0, 3, 0][frame];
     // Body
-    fillRect(bx + 2*s/PIXEL, by - 12*s/PIXEL, 12*s/PIXEL, 8*s/PIXEL, c.body);
+    fillRect(bx + 2*s, by - 12*s, 12*s, 8*s, c.body);
     // Head
-    fillRect(bx + 12*s/PIXEL, by - 16*s/PIXEL, 8*s/PIXEL, 8*s/PIXEL, c.body);
-    fillRect(bx + 16*s/PIXEL, by - 14*s/PIXEL, 4*s/PIXEL, 4*s/PIXEL, c.light);
+    fillRect(bx + 12*s, by - 16*s, 8*s, 8*s, c.body);
+    fillRect(bx + 16*s, by - 14*s, 4*s, 4*s, c.light);
     // Ears (floppy)
-    fillRect(bx + 12*s/PIXEL, by - 18*s/PIXEL, 3*s/PIXEL, 5*s/PIXEL, c.dark);
-    fillRect(bx + 18*s/PIXEL, by - 17*s/PIXEL, 3*s/PIXEL, 4*s/PIXEL, c.dark);
+    fillRect(bx + 12*s, by - 18*s, 3*s, 5*s, c.dark);
+    fillRect(bx + 18*s, by - 17*s, 3*s, 4*s, c.dark);
     // Eye & nose
-    drawPixel(bx + 17*s/PIXEL, by - 13*s/PIXEL, '#292929', s);
-    drawPixel(bx + 19*s/PIXEL, by - 10*s/PIXEL, '#292929', s);
+    drawPixel(bx + 17*s, by - 13*s, '#292929', PIXEL);
+    drawPixel(bx + 19*s, by - 10*s, '#292929', PIXEL);
     // Legs
-    fillRect(bx + 4*s/PIXEL, by - 4*s/PIXEL + legOffset, 3*s/PIXEL, 4*s/PIXEL, c.dark);
-    fillRect(bx + 10*s/PIXEL, by - 4*s/PIXEL - legOffset, 3*s/PIXEL, 4*s/PIXEL, c.dark);
+    fillRect(bx + 4*s, by - 4*s + legOffset, 3*s, 4*s, c.dark);
+    fillRect(bx + 10*s, by - 4*s - legOffset, 3*s, 4*s, c.dark);
     // Tail
-    fillRect(bx, by - 14*s/PIXEL, 4*s/PIXEL, 3*s/PIXEL, c.body);
-    fillRect(bx - 2*s/PIXEL, by - 16*s/PIXEL, 3*s/PIXEL, 2*s/PIXEL, c.body);
+    fillRect(bx, by - 14*s, 4*s, 3*s, c.body);
+    fillRect(bx - 2*s, by - 16*s, 3*s, 2*s, c.body);
   }
 
   function drawShihTzu(bx, by, c, s, frame, jumping) {
     const legOffset = jumping ? 0 : [0, 2, 0][frame];
     // Fluffy body
-    fillRect(bx + 2*s/PIXEL, by - 10*s/PIXEL, 10*s/PIXEL, 7*s/PIXEL, c.body);
-    fillRect(bx, by - 8*s/PIXEL, 3*s/PIXEL, 5*s/PIXEL, c.light);
-    fillRect(bx + 12*s/PIXEL, by - 8*s/PIXEL, 3*s/PIXEL, 5*s/PIXEL, c.light);
+    fillRect(bx + 2*s, by - 10*s, 10*s, 7*s, c.body);
+    fillRect(bx, by - 8*s, 3*s, 5*s, c.light);
+    fillRect(bx + 12*s, by - 8*s, 3*s, 5*s, c.light);
     // Round head
-    fillRect(bx + 10*s/PIXEL, by - 16*s/PIXEL, 8*s/PIXEL, 8*s/PIXEL, c.body);
-    fillRect(bx + 8*s/PIXEL, by - 14*s/PIXEL, 3*s/PIXEL, 5*s/PIXEL, c.light);
-    fillRect(bx + 18*s/PIXEL, by - 14*s/PIXEL, 3*s/PIXEL, 5*s/PIXEL, c.light);
+    fillRect(bx + 10*s, by - 16*s, 8*s, 8*s, c.body);
+    fillRect(bx + 8*s, by - 14*s, 3*s, 5*s, c.light);
+    fillRect(bx + 18*s, by - 14*s, 3*s, 5*s, c.light);
     // Top fluff
-    fillRect(bx + 11*s/PIXEL, by - 20*s/PIXEL, 6*s/PIXEL, 4*s/PIXEL, c.light);
+    fillRect(bx + 11*s, by - 20*s, 6*s, 4*s, c.light);
     // Eyes
-    drawPixel(bx + 13*s/PIXEL, by - 12*s/PIXEL, '#292929', s);
-    drawPixel(bx + 16*s/PIXEL, by - 12*s/PIXEL, '#292929', s);
+    drawPixel(bx + 13*s, by - 12*s, '#292929', PIXEL);
+    drawPixel(bx + 16*s, by - 12*s, '#292929', PIXEL);
     // Legs (short)
-    fillRect(bx + 4*s/PIXEL, by - 3*s/PIXEL + legOffset, 2*s/PIXEL, 3*s/PIXEL, c.dark);
-    fillRect(bx + 9*s/PIXEL, by - 3*s/PIXEL - legOffset, 2*s/PIXEL, 3*s/PIXEL, c.dark);
+    fillRect(bx + 4*s, by - 3*s + legOffset, 2*s, 3*s, c.dark);
+    fillRect(bx + 9*s, by - 3*s - legOffset, 2*s, 3*s, c.dark);
     // Tail curl
-    fillRect(bx, by - 10*s/PIXEL, 3*s/PIXEL, 3*s/PIXEL, c.body);
-    fillRect(bx - 2*s/PIXEL, by - 12*s/PIXEL, 2*s/PIXEL, 2*s/PIXEL, c.body);
+    fillRect(bx, by - 10*s, 3*s, 3*s, c.body);
+    fillRect(bx - 2*s, by - 12*s, 2*s, 2*s, c.body);
   }
 
   function drawGoldendoodle(bx, by, c, s, frame, jumping) {
     const legOffset = jumping ? 0 : [0, 3, 0][frame];
     // Curly body (wavy texture via alternating pixels)
-    fillRect(bx + 2*s/PIXEL, by - 14*s/PIXEL, 14*s/PIXEL, 9*s/PIXEL, c.body);
+    fillRect(bx + 2*s, by - 14*s, 14*s, 9*s, c.body);
     for (let i = 0; i < 5; i++) {
-      drawPixel(bx + (4 + i * 3)*s/PIXEL, by - (15 - (i % 2))*s/PIXEL, c.light, s);
+      drawPixel(bx + (4 + i * 3)*s, by - (15 - (i % 2))*s, c.light, PIXEL);
     }
     // Head
-    fillRect(bx + 12*s/PIXEL, by - 20*s/PIXEL, 9*s/PIXEL, 9*s/PIXEL, c.body);
-    fillRect(bx + 14*s/PIXEL, by - 22*s/PIXEL, 5*s/PIXEL, 4*s/PIXEL, c.light);
+    fillRect(bx + 12*s, by - 20*s, 9*s, 9*s, c.body);
+    fillRect(bx + 14*s, by - 22*s, 5*s, 4*s, c.light);
     // Curly ears
-    fillRect(bx + 11*s/PIXEL, by - 22*s/PIXEL, 4*s/PIXEL, 5*s/PIXEL, c.dark);
-    fillRect(bx + 19*s/PIXEL, by - 21*s/PIXEL, 4*s/PIXEL, 5*s/PIXEL, c.dark);
+    fillRect(bx + 11*s, by - 22*s, 4*s, 5*s, c.dark);
+    fillRect(bx + 19*s, by - 21*s, 4*s, 5*s, c.dark);
     // Eye & nose
-    drawPixel(bx + 17*s/PIXEL, by - 16*s/PIXEL, '#292929', s);
-    drawPixel(bx + 19*s/PIXEL, by - 13*s/PIXEL, '#292929', s);
+    drawPixel(bx + 17*s, by - 16*s, '#292929', PIXEL);
+    drawPixel(bx + 19*s, by - 13*s, '#292929', PIXEL);
     // Legs
-    fillRect(bx + 5*s/PIXEL, by - 5*s/PIXEL + legOffset, 3*s/PIXEL, 5*s/PIXEL, c.dark);
-    fillRect(bx + 11*s/PIXEL, by - 5*s/PIXEL - legOffset, 3*s/PIXEL, 5*s/PIXEL, c.dark);
+    fillRect(bx + 5*s, by - 5*s + legOffset, 3*s, 5*s, c.dark);
+    fillRect(bx + 11*s, by - 5*s - legOffset, 3*s, 5*s, c.dark);
     // Tail
-    fillRect(bx, by - 16*s/PIXEL, 4*s/PIXEL, 4*s/PIXEL, c.body);
-    drawPixel(bx - 2*s/PIXEL, by - 18*s/PIXEL, c.light, s);
+    fillRect(bx, by - 16*s, 4*s, 4*s, c.body);
+    drawPixel(bx - 2*s, by - 18*s, c.light, PIXEL);
   }
 
   function fillRect(x, y, w, h, color) {
@@ -1080,7 +1086,7 @@
     drawClouds();
     drawSun();
     drawGround(0);
-    drawDog(W / 2 - S(20), GROUND_Y, 1, Math.floor(Date.now() / 150) % 3, false, false);
+    drawDog(W / 2 - dogDrawWidth(DOGS[1]) / 2, GROUND_Y, 1, Math.floor(Date.now() / 150) % 3, false, false);
 
     drawText('DOGGO', W / 2, S(80), 36, COLORS.textDark);
     drawText('RUNNER', W / 2, S(120), 36, COLORS.textDark);
@@ -1118,7 +1124,7 @@
       }
 
       const dogY = cy + layout.cardH * 0.55;
-      drawDog(cx + layout.cardW / 2 - S(16), dogY, i, Math.floor(Date.now() / 120) % 3, false, false);
+      drawDog(cx + layout.cardW / 2 - dogDrawWidth(DOGS[i]) / 2, dogY, i, Math.floor(Date.now() / 120) % 3, false, false);
 
       const dogData = DOGS[i];
       const name = dogData.name;
